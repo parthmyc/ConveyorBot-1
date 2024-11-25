@@ -1,6 +1,18 @@
 #include "main.h"
 
 /**
+ * Cheesy Drive Constants
+ */
+#define DRIVE_DEADBAND 0.1f
+#define DRIVE_SLEW 0.02f
+#define CD_TURN_NONLINEARITY                                                   \
+  0.65 // This factor determines how fast the wheel
+       // traverses the "non linear" sine curve
+#define CD_NEG_INERTIA_SCALAR 4.0
+#define CD_SENSITIVITY 1.0
+
+
+/**
  * A callback function for LLEMU's center button.
  *
  * When this callback is fired, it will toggle line 2 of the LCD text between
@@ -109,7 +121,7 @@ static void _updateAccumulators() {
 
 double prevTurn = 0.0;
 double prevThrottle = 0.0;
-void cheesyDrive(double ithrottle, double iturn) {
+std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 	bool turnInPlace = false;
 	double linearCmd = ithrottle;
 	if (fabs(ithrottle) < DRIVE_DEADBAND && fabs(iturn) > DRIVE_DEADBAND) {
@@ -166,6 +178,8 @@ void cheesyDrive(double ithrottle, double iturn) {
 
 	prevTurn = iturn;
 	prevThrottle = ithrottle;
+
+	return std::make_pair(left,right)
 }
 
 
@@ -187,18 +201,9 @@ void opcontrol() {
 		double iturn = master.get_analog(ANALOG_RIGHT_X);
 		double ithrottle = master.get_analog(ANALOG_LEFT_Y);
 
-		_updateAccumulators();
-
-		cheesyDrive(ithrottle, iturn);
+		left_wheels.move_velocity(cheesyDrive(ithrottle, iturn).left);
+		right_wheels.move_velocity(cheesyDrive(ithrottle, iturn).right);
 		
-
-		
-		
-		// Arcade control scheme
-		int dir = master.get_analog(ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
-		int turn = master.get_analog(ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
-		left_mg.move(dir - turn);                      // Sets left motor voltage
-		right_mg.move(dir + turn);                     // Sets right motor voltage
 		pros::delay(20);                               // Run for 20 ms then update
 	}
 }
