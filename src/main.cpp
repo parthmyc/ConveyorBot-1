@@ -177,7 +177,7 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 	prevTurn = iturn;
 	prevThrottle = ithrottle;
 
-	return std::make_pair(left,right)
+	return std::make_pair(left,right);
 }
 
 
@@ -186,7 +186,7 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Motor left_wheels(left_wheels_port, pros::E_MOTOR_GEAR_GREEN);    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
+	pros::Motor left_wheels(left_wheels_port, pros::E_MOTOR_GEAR_GREEN);   // Creates a motor group with forwards ports 1 & 3 and reversed port 2
 	pros::Motor right_wheels(right_wheels_port, pros::E_MOTOR_GEAR_GREEN, true);  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
 
 
@@ -199,8 +199,8 @@ void opcontrol() {
 		double iturn = master.get_analog(ANALOG_RIGHT_X);
 		double ithrottle = master.get_analog(ANALOG_LEFT_Y);
 
-		left_wheels.move_velocity(cheesyDrive(ithrottle, iturn).left);
-		right_wheels.move_velocity(cheesyDrive(ithrottle, iturn).right);
+		left_wheels.move_velocity(cheesyDrive(ithrottle, iturn).first);
+		right_wheels.move_velocity(cheesyDrive(ithrottle, iturn).second);
 		
 		pros::delay(20);                               // Run for 20 ms then update
 	}
