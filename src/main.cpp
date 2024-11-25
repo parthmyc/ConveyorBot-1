@@ -91,10 +91,10 @@ void autonomous() {}
 // We apply a sinusoidal curve (twice) to the joystick input to give finer
 // control at small inputs.
 static double _turnRemapping(double iturn) {
-	double denominator = sin(PI / 2 * CD_TURN_NONLINEARITY);
+	double denominator = sin(M_PI / 2 * CD_TURN_NONLINEARITY);
 	double firstRemapIteration =
-	    sin(PI / 2 * CD_TURN_NONLINEARITY * iturn) / denominator;
-	return sin(PI / 2 * CD_TURN_NONLINEARITY * firstRemapIteration) / denominator;
+	    sin(M_PI / 2 * CD_TURN_NONLINEARITY * iturn) / denominator;
+	return sin(M_PI / 2 * CD_TURN_NONLINEARITY * firstRemapIteration) / denominator;
 }
 
 // On each iteration of the drive controller (where we aren't point turning) we
@@ -174,8 +174,6 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 		_updateAccumulators();
 	}
 
-	controller->tank(left, right);
-
 	prevTurn = iturn;
 	prevThrottle = ithrottle;
 
@@ -188,8 +186,8 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Motor left_wheels(left_wheels_port);    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
-	pros::Motor right_wheels(right_wheels_port, true);  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
+	pros::Motor left_wheels(left_wheels_port, pros::E_MOTOR_GEAR_GREEN);    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
+	pros::Motor right_wheels(right_wheels_port, pros::E_MOTOR_GEAR_GREEN, true);  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
 
 
 	while (true) {
