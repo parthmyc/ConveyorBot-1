@@ -199,8 +199,10 @@ void opcontrol() {
 		double iturn = master.get_analog(ANALOG_LEFT_X);
 		double ithrottle = master.get_analog(ANALOG_LEFT_Y);
 
-		left_wheels.move_velocity(cheesyDrive(ithrottle, iturn).first);
-		right_wheels.move_velocity(cheesyDrive(ithrottle, iturn).second);
+		const int maxRPM = 200; // Example max RPM for green gear cartridge
+		left_wheels.move_velocity(maxRPM * cheesyDrive(ithrottle, iturn).first);
+		right_wheels.move_velocity(maxRPM * cheesyDrive(ithrottle, iturn).second);
+
 		
 		pros::delay(2);                               // Run for 20 ms then update
 	}
