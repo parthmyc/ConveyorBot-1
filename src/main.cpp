@@ -196,12 +196,12 @@ void opcontrol() {
 		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);  // Prints status of the emulated screen LCDs
 
 		// Cheesy Drive
-		double iturn = master.get_analog(ANALOG_RIGHT_X);
+		double iturn = master.get_analog(ANALOG_LEFT_X);
 		double ithrottle = master.get_analog(ANALOG_LEFT_Y);
 
 		left_wheels.move_velocity(cheesyDrive(ithrottle, iturn).first);
 		right_wheels.move_velocity(cheesyDrive(ithrottle, iturn).second);
 		
-		pros::delay(20);                               // Run for 20 ms then update
+		pros::delay(2);                               // Run for 20 ms then update
 	}
 }
