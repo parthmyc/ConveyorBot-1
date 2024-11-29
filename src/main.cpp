@@ -161,7 +161,7 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 		negInertiaAccumlator += negInertiaPower;
 
 		double angularCmd =
-		    abs(linearCmd) *  // the more linear vel, the faster we turn
+		    std::abs(linearCmd) *  // the more linear vel, the faster we turn
 		        (remappedTurn + negInertiaAccumlator) *
 		        CD_SENSITIVITY -  // we can scale down the turning amount by a
 		                          // constant
