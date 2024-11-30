@@ -65,23 +65,23 @@ lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
 lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
                                               0, // integral gain (kI)
                                               10, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in degrees
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in degrees
-                                              500, // large error range timeout, in milliseconds
+                                              0, // anti windup
+                                              0, // small error range, in degrees
+                                              0, // small error range timeout, in milliseconds
+                                              0, // large error range, in degrees
+                                              0, // large error range timeout, in milliseconds
                                               0 // maximum acceleration (slew)
 );
 
 // input curve for throttle input during driver control
-lemlib::ExpoDriveCurve throttle_curve(3, // joystick deadband out of 127
-                                     10, // minimum output where drivetrain will move out of 127
+lemlib::ExpoDriveCurve throttle_curve(5, // joystick deadband out of 127
+                                     5, // minimum output where drivetrain will move out of 127
                                      1.019 // expo curve gain
 );
 
 // input curve for steer input during driver control
-lemlib::ExpoDriveCurve steer_curve(3, // joystick deadband out of 127
-                                  10, // minimum output where drivetrain will move out of 127
+lemlib::ExpoDriveCurve steer_curve(1, // joystick deadband out of 127
+                                  1, // minimum output where drivetrain will move out of 127
                                   1.019 // expo curve gain
 );
 
@@ -162,7 +162,12 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+	// set position to x:0, y:0, heading:0
+    chassis.setPose(0, 0, 0);
+    // turn to face heading 90 with a very long timeout
+    chassis.turnToHeading(90, 100000);
+}
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -273,22 +278,34 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 }
  */
 
-pros::Controller controller(pros::E_CONTROLLER_MASTER);
+pros::Controller controller(CONTROLLER_MASTER);
 
 void opcontrol() {
-    // loop forever
-    while (true) {
-        // get left y and right x positions
-        int leftY = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-        int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+	// start auton
+	if (controller.get_digital(DIGITAL_B)) {
+		controller.set_text(0,0, "AUTON STARTED");
+		autonomous();
+	}
+	else if (controller.get_digital(DIGITAL_Y))
+	{
+		controller.set_text(0,0, "DRIVER CONTROL");
+		while (true) {
+			// get left y and right x positions
+			int leftY = controller.get_analog(ANALOG_LEFT_Y);
+			int rightX = controller.get_analog(ANALOG_RIGHT_X);
 
-        // move the robot
-        chassis.curvature(leftY, rightX);
+			// If turning in place (forward == 0), square the turn input and limit its max speed
+			if (std::abs(leftY) < 5) {
+				rightX = (rightX * rightX * (rightX > 0 ? 1 : -1))/127; // Preserve sign when squaring
+				rightX *= 0.9; // Limits the maximum speed
+			}
+			// move the robot
+			chassis.curvature(leftY, rightX);
 
-        // delay to save resources
-        pros::delay(25);
-    }
-	
+			// delay to save resources
+			pros::delay(10);
+		}
+	}
 	/**
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 
