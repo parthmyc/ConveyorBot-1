@@ -11,6 +11,29 @@
 #define CD_NEG_INERTIA_SCALAR 4.0
 #define CD_SENSITIVITY 1.0
 
+/**
+ * lemlib config
+ */
+pros::Motor left_motor(1, pros::v5::MotorGears::green);   // Motor at port 1
+pros::Motor right_motor(-2, pros::v5::MotorGears::green);  // Motor at port 2
+
+// Create motor group with two motors
+pros::MotorGroup left_motor_group({left_motor});
+pros::MotorGroup right_motor_group({right_motor});
+
+// drivetrain settings
+lemlib::Drivetrain drivetrain(&left_motor_group,
+                              &right_motor_group,
+                              10, // track width
+                              lemlib::Omniwheel::OLD_4, // wheel type
+                              200, // rpm
+                              2 // horizontal drift
+);
+
+// create sensors
+pros::Imu imu(10);
+pros::adi::Encoder vertical_encoder('A', 'B');
+pros::adi::Encoder horizontal_encoder('C', 'D');
 
 /**
  * A callback function for LLEMU's center button.
@@ -39,6 +62,13 @@ void initialize() {
 	pros::lcd::set_text(1, "Hello PROS User!");
 
 	pros::lcd::register_btn1_cb(on_center_button);
+	while (true) { // infinite loop
+        // print measurements from the adi encoder
+        pros::lcd::print(0, "Rotation Sensor: %i", vertical_encoder.get_value());
+        // print measurements from the rotation sensor
+        pros::lcd::print(1, "Rotation Sensor: %i", horizontal_encoder.get_value());
+        pros::delay(10); // delay to save resources. DO NOT REMOVE
+    }
 }
 
 /**
@@ -180,15 +210,9 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 	return std::make_pair(left,right);
 }
 
-
-#define left_wheels_port 1
-#define right_wheels_port 2
-
 void opcontrol() {
+	/**
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Motor left_wheels(left_wheels_port, pros::v5::MotorGears::green);   // Creates a motor group with forwards ports 1 & 3 and reversed port 2
-	pros::Motor right_wheels(right_wheels_port, pros::v5::MotorGears::green);  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
-	right_wheels.set_reversed(true);
 
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
@@ -205,5 +229,6 @@ void opcontrol() {
 
 		
 		pros::delay(2);                               // Run for 20 ms then update
-	}
+	} */
+	
 }
