@@ -14,8 +14,8 @@
 /**
  * lemlib config
  */
-pros::Motor left_motor(1, pros::v5::MotorGears::green);   // Motor at port 1
-pros::Motor right_motor(-2, pros::v5::MotorGears::green);  // Motor at port 2
+pros::Motor left_motor(2, pros::v5::MotorGears::green);   // Motor at port 1
+pros::Motor right_motor(-1, pros::v5::MotorGears::green);  // Motor at port 2
 
 // Create motor group with two motors
 pros::MotorGroup left_motor_group({left_motor});
@@ -31,9 +31,9 @@ lemlib::Drivetrain drivetrain(&left_motor_group,
 );
 
 // create sensors
-pros::Imu imu(10);
-pros::adi::Encoder vertical_encoder('A', 'B');
-pros::adi::Encoder horizontal_encoder('C', 'D');
+pros::Imu imu(11);
+pros::adi::Encoder vertical_encoder('C', 'D');
+pros::adi::Encoder horizontal_encoder('A', 'B');
 
 /**
  * A callback function for LLEMU's center button.
