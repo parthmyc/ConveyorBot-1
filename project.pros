@@ -5,7 +5,7 @@
         "target": "v5",
         "templates": {
             "LemLib": {
-                "location": "/Users/parthaeron/Library/Application Support/PROS/templates/LemLib@0.5.5",
+                "location": "C:\\Users\\Parth\\AppData\\Roaming\\PROS\\templates\\LemLib@0.5.5",
                 "metadata": {
                     "origin": "LemLib"
                 },

@@ -219,13 +219,23 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
+
+ASSET(start_goal_txt);
+ASSET(bb1_txt);
+ASSET(bb1_reverse_txt);
+ASSET(bb2_txt);
+ASSET(bb2_reverse_txt);
+ASSET(bb3_txt);
+ASSET(bb_retrieve_txt);
+ASSET(bb_score_txt);
+
 void autonomous() { //turn maxSpeed = 50  drive = 60
     // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
 	arm_calibrate();
 	arm_moveToAngle(10, 127);
+	
     // follow path
-
     chassis.follow(start_goal_txt, 15, 10000, false);
 	pros::delay(100);
 	intake_motors.move(127);
