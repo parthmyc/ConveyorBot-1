@@ -14,12 +14,11 @@
 /**
  * lemlib config
  */
-pros::Motor left_motor(2, pros::v5::MotorGears::green);   // Motor at port 1
-pros::Motor right_motor(-1, pros::v5::MotorGears::green);  // Motor at port 2
-
 // Create motor group with two motors
-pros::MotorGroup left_motor_group({left_motor});
-pros::MotorGroup right_motor_group({right_motor});
+pros::MotorGroup left_motor_group({2}, pros::v5::MotorGears::green);
+pros::MotorGroup right_motor_group({-1}, pros::v5::MotorGears::green);
+pros::MotorGroup intake_motors({6, -7}, pros::v5::MotorGears::blue);
+pros::MotorGroup arm_motor({5}, pros::v5::MotorGears::red);
 
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&left_motor_group,
@@ -32,7 +31,7 @@ lemlib::Drivetrain drivetrain(&left_motor_group,
 
 // create sensors
 // imu
-pros::Imu imu(11);
+pros::Imu imu(12);
 // horizontal tracking wheel encoder
 pros::adi::Encoder horizontal_encoder('A', 'B');
 // vertical tracking wheel encoder
@@ -50,27 +49,27 @@ lemlib::OdomSensors sensors(&vertical_tracking_wheel, // vertical tracking wheel
 );
 
 // lateral PID controller
-lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
+lemlib::ControllerSettings lateral_controller(9.8, // proportional gain (kP) 9.8
                                               0, // integral gain (kI)
-                                              3, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in inches
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in inches
-                                              500, // large error range timeout, in milliseconds
-                                              20 // maximum acceleration (slew)
+                                              1.6, // derivative gain (kD) 1.6
+                                              0, // anti windup
+                                              0.05, // small error range, in inches
+                                              300, // small error range timeout, in milliseconds
+                                              0.1, // large error range, in inches
+                                              1500, // large error range timeout, in milliseconds
+                                              0.8 // maximum acceleration (slew) 0.8
 );
 
 // angular PID controller
-lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
+lemlib::ControllerSettings angular_controller(1.3, // proportional gain (kP) 0.9 1.8 1.4
                                               0, // integral gain (kI)
-                                              10, // derivative gain (kD)
-                                              0, // anti windup
-                                              0, // small error range, in degrees
-                                              0, // small error range timeout, in milliseconds
-                                              0, // large error range, in degrees
-                                              0, // large error range timeout, in milliseconds
-                                              0 // maximum acceleration (slew)
+                                              1.4, // derivative gain (kD) 8 1.1 8.625
+                                              0, // anti windup 13.65
+                                              0.05, // small error range, in degrees
+                                              300, // small error range timeout, in milliseconds
+                                              0.1, // large error range, in degrees
+                                              1500, // large error range timeout, in milliseconds
+                                              0.6 // maximum acceleration (slew) 0.8
 );
 
 // input curve for throttle input during driver control
@@ -105,7 +104,7 @@ void on_center_button() {
 	static bool pressed = false;
 	pressed = !pressed;
 	if (pressed) {
-		pros::lcd::set_text(2, "I was pressed!");
+		pros::lcd::print(2, "I was pressed!");
 	} else {
 		pros::lcd::clear_line(2);
 	}
@@ -162,11 +161,11 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {
-	// set position to x:0, y:0, heading:0
+void autonomous() { //turn maxSpeed = 50  drive = 60
+    // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
     // turn to face heading 90 with a very long timeout
-    chassis.turnToHeading(90, 100000);
+    chassis.turnToHeading(170, 3000, {.maxSpeed = 50});
 }
 
 /**
@@ -281,29 +280,47 @@ std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
 pros::Controller controller(CONTROLLER_MASTER);
 
 void opcontrol() {
-	// start auton
-	if (controller.get_digital(DIGITAL_B)) {
-		controller.set_text(0,0, "AUTON STARTED");
-		autonomous();
-	}
-	else if (controller.get_digital(DIGITAL_Y))
-	{
-		controller.set_text(0,0, "DRIVER CONTROL");
-		while (true) {
-			// get left y and right x positions
-			int leftY = controller.get_analog(ANALOG_LEFT_Y);
-			int rightX = controller.get_analog(ANALOG_RIGHT_X);
+	while (true) {
+		// start auton
+		if (controller.get_digital(DIGITAL_A)) {
+			controller.print(0,0, "AUTON STARTED");
+			// delay for text to uplaod
+			pros::delay(110);
+			autonomous();
+			controller.clear_line(0);
+			pros::delay(110);
+			controller.print(0,0, "AUTON ENDED");
+			pros::delay(110);
+		}
 
-			// If turning in place (forward == 0), square the turn input and limit its max speed
-			if (std::abs(leftY) < 5) {
-				rightX = (rightX * rightX * (rightX > 0 ? 1 : -1))/127; // Preserve sign when squaring
-				rightX *= 0.9; // Limits the maximum speed
+		if (controller.get_digital(DIGITAL_B)) {
+			controller.clear_line(0);
+			pros::delay(110);
+			controller.print(0,0, "DRIVER CONTROL");
+			pros::delay(110);
+			// driver control loop
+			while (true) {
+				// get left y and right x positions
+				int leftY = controller.get_analog(ANALOG_LEFT_Y);
+				int rightX = controller.get_analog(ANALOG_RIGHT_X);
+
+				// If turning in place (forward == 0), square the turn input and limit its max speed
+				if (std::abs(leftY) < 5) {
+					rightX = (rightX * rightX * (rightX > 0 ? 1 : -1))/127; // Preserve sign when squaring
+					rightX *= 0.9; // Limits the maximum speed
+				}
+				// move the robot
+				chassis.curvature(leftY, rightX);
+
+				// if;
+
+				// delay to save resources
+				pros::delay(10);
+
+				if (controller.get_digital(DIGITAL_A)) {
+					break;
+				}
 			}
-			// move the robot
-			chassis.curvature(leftY, rightX);
-
-			// delay to save resources
-			pros::delay(10);
 		}
 	}
 	/**
