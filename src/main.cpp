@@ -1,24 +1,13 @@
 #include "main.h"
 
-/**
- * Cheesy Drive Constants
- */
-#define DRIVE_DEADBAND 0.1f
-#define DRIVE_SLEW 0.02f
-#define CD_TURN_NONLINEARITY                                                   \
-  0.65 // This factor determines how fast the wheel
-       // traverses the "non linear" sine curve
-#define CD_NEG_INERTIA_SCALAR 4.0
-#define CD_SENSITIVITY 1.0
+// Drivetrain config
 
-/**
- * lemlib config
- */
+// Controller
+pros::Controller controller(CONTROLLER_MASTER);
+
 // Create motor group with two motors
 pros::MotorGroup left_motor_group({2}, pros::v5::MotorGears::green);
 pros::MotorGroup right_motor_group({-1}, pros::v5::MotorGears::green);
-pros::MotorGroup intake_motors({6, -7}, pros::v5::MotorGears::blue);
-pros::MotorGroup arm_motor({5}, pros::v5::MotorGears::red);
 
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&left_motor_group,
@@ -94,6 +83,75 @@ lemlib::Chassis chassis(drivetrain, // drivetrain settings
 
 );
 
+// Arm config
+pros::Motor arm_motor(5, pros::v5::MotorGears::red);
+pros::ADIEncoder arm_encoder (5, 6, false);
+pros::ADIDigitalIn arm_limit(7);
+
+// Set bottom position to 0
+void arm_calibrate() {
+	while (!arm_limit.get_value()) {
+		arm_motor.move(-63);
+	}
+
+	arm_motor.brake();
+	arm_encoder.reset();
+}
+
+// PID class for arm
+lemlib::PID arm_controller(5,  // kP
+						   0,  // kI
+						   0,  // kD
+						   0,  // integral anti windup range
+						   false  // don't reset integral when sign of error flips
+);
+
+// Variable to track the current limited power
+double currentPower = 0;
+
+void arm_moveToAngle(double angle, double maxSpeed) {
+	double error = arm_encoder.get_value() - angle;
+	double power = arm_controller.update(error);
+
+	// Apply the slew rate limiter to the power
+	double limitedPower = lemlib::slew(power, currentPower, 5); //set maxAccel as slew rate
+
+	// Maximum speed limit
+	if (fabs(limitedPower) > maxSpeed) {
+		limitedPower = maxSpeed;
+	}
+
+	// Update the current power
+	currentPower = limitedPower;
+
+	// Move the arm motor
+	arm_motor.move(limitedPower);
+}
+
+// Arm scrolling
+// Predefined arm positions
+double arm_positions[] = {0.0, 10, 20, 30};
+int position_count = sizeof(arm_positions) / sizeof(arm_positions[0]);
+
+void arm_scroll(double maxSpeed) {
+	static int i = 0; // Current selected position
+
+	// Check button states and update position index
+	if (controller.get_digital(DIGITAL_L1) && i < position_count - 1) {
+		// Increment index only if not at the last position
+		i++;
+	} else if (controller.get_digital(DIGITAL_L2) && i > 0) {
+		// Decrement index only if not at the first position
+		i--;
+	}
+
+	// Move to the selected position
+	arm_moveToAngle(arm_positions[i], maxSpeed);
+}
+
+// Create conveyor motor group
+pros::MotorGroup intake_motors({6, -7}, pros::v5::MotorGears::blue);
+
 /**
  * A callback function for LLEMU's center button.
  *
@@ -164,129 +222,50 @@ void competition_initialize() {}
 void autonomous() { //turn maxSpeed = 50  drive = 60
     // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
-    // turn to face heading 90 with a very long timeout
-    chassis.turnToHeading(170, 3000, {.maxSpeed = 50});
+	arm_calibrate();
+	arm_moveToAngle(10, 127);
+    // follow path
+
+    chassis.follow(start_goal_txt, 15, 10000, false);
+	pros::delay(100);
+	intake_motors.move(127);
+    chassis.follow(bb1_txt, 15, 10000, false);
+	pros::delay(300);
+	intake_motors.brake();
+    chassis.follow(bb1_reverse_txt, 15, 10000, true);
+	intake_motors.move(127);
+    chassis.follow(bb2_txt, 15, 10000, false);
+	pros::delay(300);
+	intake_motors.brake();
+    chassis.follow(bb2_reverse_txt, 15, 10000, true);
+	intake_motors.move(127);
+    chassis.follow(bb3_txt, 15, 10000, false);
+	pros::delay(300);
+	intake_motors.brake();
+    chassis.follow(bb_retrieve_txt, 15, 10000, true);
+	pros::delay(100);
+	arm_moveToAngle(75, 127);
+	pros::delay(100);
+    chassis.follow(bb_score_txt, 15, 10000, false);
+	pros::delay(100);
+	arm_moveToAngle(0, 127);
+	pros::delay(500);
+	intake_motors.move(-127);
+	pros::delay(2000);
+	intake_motors.brake();
 }
-
-/**
- * Runs the operator control code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the operator
- * control mode.
- *
- * If no competition control is connected, this function will run immediately
- * following initialize().
- *
- * If the robot is disabled or communications is lost, the
- * operator control task will be stopped. Re-enabling the robot will restart the
- * task, not resume it from where it left off.
- */
-
-
-/**
-// We apply a sinusoidal curve (twice) to the joystick input to give finer
-// control at small inputs.
-static double _turnRemapping(double iturn) {
-	double denominator = sin(M_PI / 2 * CD_TURN_NONLINEARITY);
-	double firstRemapIteration =
-	    sin(M_PI / 2 * CD_TURN_NONLINEARITY * iturn) / denominator;
-	return sin(M_PI / 2 * CD_TURN_NONLINEARITY * firstRemapIteration) / denominator;
-}
-
-// On each iteration of the drive controller (where we aren't point turning) we
-// constrain the accumulators to the range [-1, 1].
-double quickStopAccumlator = 0.0;
-double negInertiaAccumlator = 0.0;
-static void _updateAccumulators() {
-	if (negInertiaAccumlator > 1) {
-		negInertiaAccumlator -= 1;
-	} else if (negInertiaAccumlator < -1) {
-		negInertiaAccumlator += 1;
-	} else {
-		negInertiaAccumlator = 0;
-	}
-
-	if (quickStopAccumlator > 1) {
-		quickStopAccumlator -= 1;
-	} else if (quickStopAccumlator < -1) {
-		quickStopAccumlator += 1;
-	} else {
-		quickStopAccumlator = 0.0;
-	}
-}
-
-double prevTurn = 0.0;
-double prevThrottle = 0.0;
-std::pair<double,double> cheesyDrive(double ithrottle, double iturn) {
-	bool turnInPlace = false;
-	double linearCmd = ithrottle;
-	if (fabs(ithrottle) < DRIVE_DEADBAND && fabs(iturn) > DRIVE_DEADBAND) {
-		// The controller joysticks can output values near zero when they are
-		// not actually pressed. In the case of small inputs like this, we
-		// override the throttle value to 0.
-		linearCmd = 0.0;
-		turnInPlace = true;
-	} else if (ithrottle - prevThrottle > DRIVE_SLEW) {
-		linearCmd = prevThrottle + DRIVE_SLEW;
-	} else if (ithrottle - prevThrottle < -(DRIVE_SLEW * 2)) {
-		// We double the drive slew rate for the reverse direction to get
-		// faster stopping.
-		linearCmd = prevThrottle - (DRIVE_SLEW * 2);
-	}
-
-	double remappedTurn = _turnRemapping(iturn);
-
-	double left, right;
-	if (turnInPlace) {
-		// The remappedTurn value is squared when turning in place. This
-		// provides even more fine control over small speed values.
-		left = remappedTurn * std::abs(remappedTurn);
-		right = -remappedTurn * std::abs(remappedTurn);
-
-		// The FRC Cheesy Drive Implementation calculated the
-		// quickStopAccumulator here:
-		// if (Math.abs(linearPower) < 0.2) {
-		// 	double alpha = 0.1;
-		// 	quickStopAccumulator = (1 - alpha) * quickStopAccumulator
-		// 			+ alpha * Util.limit(wheel, 1.0) * 5;
-		// }
-		// But I apparently left that out of my implementation? Seemed to work
-		// without it though.
-	} else {
-		double negInertiaPower = (iturn - prevTurn) * CD_NEG_INERTIA_SCALAR;
-		negInertiaAccumlator += negInertiaPower;
-
-		double angularCmd =
-		    std::abs(linearCmd) *  // the more linear vel, the faster we turn
-		        (remappedTurn + negInertiaAccumlator) *
-		        CD_SENSITIVITY -  // we can scale down the turning amount by a
-		                          // constant
-		    quickStopAccumlator;
-
-		right = left = linearCmd;
-		left += angularCmd;
-		right -= angularCmd;
-
-		_updateAccumulators();
-	}
-
-	prevTurn = iturn;
-	prevThrottle = ithrottle;
-
-	return std::make_pair(left,right);
-}
- */
-
-pros::Controller controller(CONTROLLER_MASTER);
 
 void opcontrol() {
 	while (true) {
 		// start auton
 		if (controller.get_digital(DIGITAL_A)) {
+			
 			controller.print(0,0, "AUTON STARTED");
 			// delay for text to uplaod
 			pros::delay(110);
+			
 			autonomous();
+
 			controller.clear_line(0);
 			pros::delay(110);
 			controller.print(0,0, "AUTON ENDED");
@@ -294,12 +273,15 @@ void opcontrol() {
 		}
 
 		if (controller.get_digital(DIGITAL_B)) {
+			
 			controller.clear_line(0);
 			pros::delay(110);
 			controller.print(0,0, "DRIVER CONTROL");
 			pros::delay(110);
+
 			// driver control loop
 			while (true) {
+				
 				// get left y and right x positions
 				int leftY = controller.get_analog(ANALOG_LEFT_Y);
 				int rightX = controller.get_analog(ANALOG_RIGHT_X);
@@ -309,10 +291,19 @@ void opcontrol() {
 					rightX = (rightX * rightX * (rightX > 0 ? 1 : -1))/127; // Preserve sign when squaring
 					rightX *= 0.9; // Limits the maximum speed
 				}
+
 				// move the robot
 				chassis.curvature(leftY, rightX);
 
-				// if;
+				// move the arm
+				arm_scroll(127);
+
+				if (controller.get_digital(DIGITAL_R1)) {
+					intake_motors.move(127);
+				}
+				if (controller.get_digital(DIGITAL_R2)) {
+					intake_motors.move(-127);
+				}
 
 				// delay to save resources
 				pros::delay(10);
@@ -322,25 +313,5 @@ void opcontrol() {
 				}
 			}
 		}
-	}
-	/**
-	pros::Controller master(pros::E_CONTROLLER_MASTER);
-
-	while (true) {
-		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);  // Prints status of the emulated screen LCDs
-
-		// Cheesy Drive
-		double iturn = master.get_analog(ANALOG_LEFT_X);
-		double ithrottle = master.get_analog(ANALOG_LEFT_Y);
-
-		const int maxRPM = 200; // Example max RPM for green gear cartridge
-		left_wheels.move_velocity(maxRPM * cheesyDrive(ithrottle, iturn).first);
-		right_wheels.move_velocity(maxRPM * cheesyDrive(ithrottle, iturn).second);
-
-		
-		pros::delay(2);                               // Run for 20 ms then update
-	} */
-	
+	}	
 }
