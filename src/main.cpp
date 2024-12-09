@@ -12,10 +12,10 @@ pros::MotorGroup right_motor_group({-1}, pros::v5::MotorGears::green);
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&left_motor_group,
                               &right_motor_group,
-                              11.125, // track width
+                              11.5, // track width
                               lemlib::Omniwheel::OLD_4, // wheel type
                               200, // rpm
-                              2 // horizontal drift
+                              8 // horizontal drift
 );
 
 // create sensors
@@ -38,7 +38,7 @@ lemlib::OdomSensors sensors(&vertical_tracking_wheel, // vertical tracking wheel
 );
 
 // lateral PID controller
-lemlib::ControllerSettings lateral_controller(9.8, // proportional gain (kP) 9.8
+lemlib::ControllerSettings lateral_controller(10.5, // proportional gain (kP) 9.8
                                               0, // integral gain (kI)
                                               1.6, // derivative gain (kD) 1.6
                                               0, // anti windup
@@ -50,27 +50,27 @@ lemlib::ControllerSettings lateral_controller(9.8, // proportional gain (kP) 9.8
 );
 
 // angular PID controller
-lemlib::ControllerSettings angular_controller(1.3, // proportional gain (kP) 0.9 1.8 1.4
+lemlib::ControllerSettings angular_controller(1.4, // proportional gain (kP) 0.9 1.8 1.4
                                               0, // integral gain (kI)
-                                              1.4, // derivative gain (kD) 8 1.1 8.625
+                                              8.6, // derivative gain (kD) 8 1.1 8.625
                                               0, // anti windup 13.65
                                               0.05, // small error range, in degrees
                                               300, // small error range timeout, in milliseconds
                                               0.1, // large error range, in degrees
                                               1500, // large error range timeout, in milliseconds
-                                              0.6 // maximum acceleration (slew) 0.8
+                                              0.8 // maximum acceleration (slew) 0.8
 );
 
 // input curve for throttle input during driver control
-lemlib::ExpoDriveCurve throttle_curve(5, // joystick deadband out of 127
-                                     5, // minimum output where drivetrain will move out of 127
-                                     1.019 // expo curve gain
+lemlib::ExpoDriveCurve throttle_curve(1, // joystick deadband out of 127
+                                      1, // minimum output where drivetrain will move out of 127
+                                      1.019 // expo curve gain
 );
 
 // input curve for steer input during driver control
 lemlib::ExpoDriveCurve steer_curve(1, // joystick deadband out of 127
-                                  1, // minimum output where drivetrain will move out of 127
-                                  1.019 // expo curve gain
+                                   1, // minimum output where drivetrain will move out of 127
+                                   1.019 // expo curve gain
 );
 
 // create the chassis
@@ -84,12 +84,23 @@ lemlib::Chassis chassis(drivetrain, // drivetrain settings
 );
 
 // Arm config
-pros::Motor arm_motor(5, pros::v5::MotorGears::red);
-pros::ADIEncoder arm_encoder (5, 6, false);
-pros::ADIDigitalIn arm_limit(7);
+pros::MotorGroup arm_motor({-20}, pros::v5::MotorGears::red);
+pros::ADIEncoder arm_encoder (6, 7, false);
+pros::ADIDigitalIn arm_limit(5);
+
+// PID class for arm
+lemlib::PID arm_controller(20,  // kP
+						   0,  // kI
+						   0,  // kD
+						   0,  // integral anti windup range
+						   false  // don't reset integral when sign of error flips
+);
 
 // Set bottom position to 0
 void arm_calibrate() {
+	arm_motor.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+	arm_motor.move(127);
+	pros::delay(600);
 	while (!arm_limit.get_value()) {
 		arm_motor.move(-63);
 	}
@@ -97,14 +108,6 @@ void arm_calibrate() {
 	arm_motor.brake();
 	arm_encoder.reset();
 }
-
-// PID class for arm
-lemlib::PID arm_controller(5,  // kP
-						   0,  // kI
-						   0,  // kD
-						   0,  // integral anti windup range
-						   false  // don't reset integral when sign of error flips
-);
 
 // Variable to track the current limited power
 double currentPower = 0;
@@ -114,39 +117,33 @@ void arm_moveToAngle(double angle, double maxSpeed) {
 	double power = arm_controller.update(error);
 
 	// Apply the slew rate limiter to the power
-	double limitedPower = lemlib::slew(power, currentPower, 5); //set maxAccel as slew rate
+	// double limitedPower = lemlib::slew(power, currentPower, 5); //set maxAccel as slew rate
 
 	// Maximum speed limit
-	if (fabs(limitedPower) > maxSpeed) {
-		limitedPower = maxSpeed;
-	}
+	// if (fabs(limitedPower) > maxSpeed) {
+	// 	limitedPower = maxSpeed;
+	// }
 
 	// Update the current power
-	currentPower = limitedPower;
+	// currentPower = limitedPower;
 
 	// Move the arm motor
-	arm_motor.move(limitedPower);
+	arm_motor.move(currentPower);
 }
 
 // Arm scrolling
 // Predefined arm positions
-double arm_positions[] = {0.0, 10, 20, 30};
+double arm_positions[] = {0.0, 10, 80, 128};// 30 160
 int position_count = sizeof(arm_positions) / sizeof(arm_positions[0]);
 
 void arm_scroll(double maxSpeed) {
 	static int i = 0; // Current selected position
 
-	// Check button states and update position index
-	if (controller.get_digital(DIGITAL_L1) && i < position_count - 1) {
-		// Increment index only if not at the last position
-		i++;
-	} else if (controller.get_digital(DIGITAL_L2) && i > 0) {
-		// Decrement index only if not at the first position
-		i--;
-	}
 
 	// Move to the selected position
-	arm_moveToAngle(arm_positions[i], maxSpeed);
+	arm_motor.move_absolute(7 * arm_positions[i], 127);
+	
+	// arm_moveToAngle(arm_positions[i], maxSpeed);
 }
 
 // Create conveyor motor group
@@ -184,6 +181,8 @@ void initialize() {
             pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
             pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
             pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
+			pros::lcd::print(3, "XY: %f", chassis.getPose());
+			// pros::lcd::print(3, "Theta Arm: %i", arm_encoder.get_value());
             // delay to save resources
             pros::delay(20);
         }
@@ -228,41 +227,65 @@ ASSET(bb2_reverse_txt);
 ASSET(bb3_txt);
 ASSET(bb_retrieve_txt);
 ASSET(bb_score_txt);
+ASSET(test_txt);
+ASSET(example_txt);
 
 void autonomous() { //turn maxSpeed = 50  drive = 60
     // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
-	arm_calibrate();
-	arm_moveToAngle(10, 127);
-	
-    // follow path
-    chassis.follow(start_goal_txt, 15, 10000, false);
-	pros::delay(100);
+	/** arm_calibrate();
+	arm_motor.move_relative(360*7*0.4, 127);
+	pros::delay(1000);
+	arm_motor.brake();
+
+	pros::delay(100); */
+	// intake_motors.move(127);
+	// chassis.moveToPose(-2.675, 12, 270, 10000,{.maxSpeed = 127, .minSpeed = 5});
+	// chassis.swingToHeading(270, DriveSide::LEFT, 4000);
+	// chassis.swingToHeading(270, DriveSide::LEFT, 4000);
+	chassis.moveToPoint(0, 20, 5000, {.maxSpeed = 100}); // , .minSpeed = 5, .earlyExitRange = 0.01
+	pros::delay(1000);
+	// chassis.moveToPose(-4.965, 13.162, 270, 10000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
+	// chassis.moveToPose(-25.87, 12.16, 0, 5000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
+	// hassis.moveToPose(-24.514, 20.473, 22.2, 5000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
+
+
+// Path
+
+// Path
+
+
+
+
+
+
+
+
+
+    // chassis.follow(bb1_txt, 40, 10000);
+	// pros::delay(300);
+	// intake_motors.brake();
+    /** chassis.follow(bb1_reverse_txt, 40, 10000);
 	intake_motors.move(127);
-    chassis.follow(bb1_txt, 15, 10000, false);
+    chassis.follow(bb2_txt, 15, 10000);
 	pros::delay(300);
 	intake_motors.brake();
-    chassis.follow(bb1_reverse_txt, 15, 10000, true);
+    chassis.follow(bb2_reverse_txt, 15, 10000, false);
 	intake_motors.move(127);
-    chassis.follow(bb2_txt, 15, 10000, false);
+    chassis.follow(bb3_txt, 15, 10000);
 	pros::delay(300);
 	intake_motors.brake();
-    chassis.follow(bb2_reverse_txt, 15, 10000, true);
-	intake_motors.move(127);
-    chassis.follow(bb3_txt, 15, 10000, false);
-	pros::delay(300);
-	intake_motors.brake();
-    chassis.follow(bb_retrieve_txt, 15, 10000, true);
+    chassis.follow(bb_retrieve_txt, 15, 10000, false);
 	pros::delay(100);
 	arm_moveToAngle(75, 127);
 	pros::delay(100);
-    chassis.follow(bb_score_txt, 15, 10000, false);
+    chassis.follow(bb_score_txt, 15, 10000);
 	pros::delay(100);
 	arm_moveToAngle(0, 127);
 	pros::delay(500);
 	intake_motors.move(-127);
 	pros::delay(2000);
-	intake_motors.brake();
+	intake_motors.brake(); */
 }
 
 void opcontrol() {
@@ -289,30 +312,51 @@ void opcontrol() {
 			controller.print(0,0, "DRIVER CONTROL");
 			pros::delay(110);
 
+			arm_motor.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+
 			// driver control loop
 			while (true) {
-				
 				// get left y and right x positions
 				int leftY = controller.get_analog(ANALOG_LEFT_Y);
 				int rightX = controller.get_analog(ANALOG_RIGHT_X);
 
-				// If turning in place (forward == 0), square the turn input and limit its max speed
-				if (std::abs(leftY) < 5) {
-					rightX = (rightX * rightX * (rightX > 0 ? 1 : -1))/127; // Preserve sign when squaring
-					rightX *= 0.9; // Limits the maximum speed
-				}
+				leftY *= 0.85;
+				rightX *= 0.85;
 
 				// move the robot
 				chassis.curvature(leftY, rightX);
 
 				// move the arm
-				arm_scroll(127);
+			
+				if (controller.get_digital(DIGITAL_L1))
+				{
+					arm_motor.move(100);
+				}
+				else if (controller.get_digital(DIGITAL_L2))
+				{
+					arm_motor.move(-100);
+				}
+				else
+				{
+					arm_motor.brake();
+				}
+
+				// arm_scr(127);
 
 				if (controller.get_digital(DIGITAL_R1)) {
 					intake_motors.move(127);
 				}
-				if (controller.get_digital(DIGITAL_R2)) {
+				else if (controller.get_digital(DIGITAL_R2)) {
 					intake_motors.move(-127);
+				}
+				else
+				{
+					intake_motors.brake();
+				}
+				
+
+				if (controller.get_digital(DIGITAL_X)) {
+					arm_calibrate();
 				}
 
 				// delay to save resources

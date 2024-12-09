@@ -1,0 +1,19 @@
+0, 0, 25.923
+2, 0, 24.593
+4, 0, 23.186
+6, 0, 21.689
+8, 0, 20.08
+10, 0, 18.33
+12, 0, 16.395
+14, 0, 14.199
+16, 0, 11.593
+18, 0, 8.198
+20, 0, 0
+20, 0, 0
+40, 0, 0
+endData
+16.8
+63
+200
+0, 0, 10, 0, 10, 0, 20, 0
+#PATH.JERRYIO-DATA {"appVersion":"0.8.3","format":"LemLib v0.5","gc":{"robotWidth":12.000000000000002,"robotHeight":12.000000000000002,"robotIsHolonomic":false,"showRobot":false,"uol":2.54,"pointDensity":2,"controlMagnetDistance":0.07750015500031,"fieldImage":{"displayName":"IME 100","signature":"27ac2e42416e4bb399bc48095cc11af14ec6cf0937eac5a89a72920df7932c17","origin":{"heightInMM":2362.2,"__type":"local"}},"coordinateSystem":"VEX Gaming Positioning System"},"paths":[{"segments":[{"controls":[{"uid":"HHSRpmCom7","x":0,"y":0,"lock":false,"visible":true,"heading":90,"__type":"end-point"},{"uid":"P5pK5XxjTV","x":20,"y":0,"lock":false,"visible":true,"heading":90,"__type":"end-point"}],"speedProfiles":[],"lookaheadKeyframes":[],"uid":"BND96kPqyM"}],"pc":{"speedLimit":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":127,"label":"127"},"step":1,"from":0,"to":63},"bentRateApplicableRange":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":1,"label":"1"},"step":0.001,"from":0,"to":0.1},"maxDecelerationRate":16.8},"name":"Path","uid":"TllAjL6mbC","lock":false,"visible":true}]}
