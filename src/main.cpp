@@ -184,9 +184,6 @@ void initialize() {
             pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
             pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
             pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
-			pros::lcd::print(3, "XY: %f", chassis.getPose());
-			// pros::lcd::print(3, "Theta Arm: %i", arm_encoder.get_value());
-            // delay to save resources
             pros::delay(20);
         }
     });
@@ -210,7 +207,8 @@ ASSET(example_txt);
 void autonomous() { //turn maxSpeed = 50  drive = 60
     // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
-	chassis.moveToPoint(0, 20, 5000, {.maxSpeed = 100}); // , .minSpeed = 5, .earlyExitRange = 0.01
+	// move forward to score soccer ball
+	chassis.moveToPoint(0, 20, 5000, {.maxSpeed = 100});
 	pros::delay(1000);
 
 }
