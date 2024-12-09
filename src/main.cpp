@@ -19,6 +19,7 @@ lemlib::Drivetrain drivetrain(&left_motor_group,
 );
 
 // create sensors
+
 // imu
 pros::Imu imu(12);
 // horizontal tracking wheel encoder
@@ -36,6 +37,9 @@ lemlib::OdomSensors sensors(&vertical_tracking_wheel, // vertical tracking wheel
                             nullptr, // horizontal tracking wheel 2, set to nullptr as we don't have a second one
                             &imu // inertial sensor
 );
+
+
+// PID controller config
 
 // lateral PID controller
 lemlib::ControllerSettings lateral_controller(10.5, // proportional gain (kP) 9.8
@@ -88,7 +92,7 @@ pros::MotorGroup arm_motor({-20}, pros::v5::MotorGears::red);
 pros::ADIEncoder arm_encoder (6, 7, false);
 pros::ADIDigitalIn arm_limit(5);
 
-// PID class for arm
+// PID class for arm (unused, arm encoder was not functioning correctly at comp)
 lemlib::PID arm_controller(20,  // kP
 						   0,  // kI
 						   0,  // kD
@@ -112,6 +116,7 @@ void arm_calibrate() {
 // Variable to track the current limited power
 double currentPower = 0;
 
+// Unused arm movement code that utilizses PID
 void arm_moveToAngle(double angle, double maxSpeed) {
 	double error = arm_encoder.get_value() - angle;
 	double power = arm_controller.update(error);
@@ -131,11 +136,12 @@ void arm_moveToAngle(double angle, double maxSpeed) {
 	arm_motor.move(currentPower);
 }
 
-// Arm scrolling
+// Arm scrolling (unused)
 // Predefined arm positions
-double arm_positions[] = {0.0, 10, 80, 128};// 30 160
+double arm_positions[] = {0.0, 10, 80, 128};
 int position_count = sizeof(arm_positions) / sizeof(arm_positions[0]);
 
+// move arm to specific postions when right shoulder buttons are pressed (unused)
 void arm_scroll(double maxSpeed) {
 	static int i = 0; // Current selected position
 
@@ -148,6 +154,7 @@ void arm_scroll(double maxSpeed) {
 
 // Create conveyor motor group
 pros::MotorGroup intake_motors({6, -7}, pros::v5::MotorGears::blue);
+
 
 /**
  * A callback function for LLEMU's center button.
@@ -165,12 +172,8 @@ void on_center_button() {
 	}
 }
 
-/**
- * Runs initialization code. This occurs as soon as the program is started.
- *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
- */
+
+// Initialization code. This occurs as soon as the program is started.
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
     chassis.calibrate(); // calibrate sensors
@@ -189,36 +192,8 @@ void initialize() {
     });
 }
 
-/**
- * Runs while the robot is in the disabled state of Field Management System or
- * the VEX Competition Switch, following either autonomous or opcontrol. When
- * the robot is enabled, this task will exit.
- */
-void disabled() {}
 
-/**
- * Runs after initialize(), and before autonomous when connected to the Field
- * Management System or the VEX Competition Switch. This is intended for
- * competition-specific initialization routines, such as an autonomous selector
- * on the LCD.
- *
- * This task will exit when the robot is enabled and autonomous or opcontrol
- * starts.
- */
-void competition_initialize() {}
-
-/**
- * Runs the user autonomous code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the autonomous
- * mode. Alternatively, this function may be called in initialize or opcontrol
- * for non-competition testing purposes.
- *
- * If the robot is disabled or communications is lost, the autonomous task
- * will be stopped. Re-enabling the robot will restart the task, not re-start it
- * from where it left off.
- */
-
+// Unused PATH.JERRIO implementation
 ASSET(start_goal_txt);
 ASSET(bb1_txt);
 ASSET(bb1_reverse_txt);
@@ -230,69 +205,22 @@ ASSET(bb_score_txt);
 ASSET(test_txt);
 ASSET(example_txt);
 
+
+// Autonomous control code
 void autonomous() { //turn maxSpeed = 50  drive = 60
     // set position to x:0, y:0, heading:0
     chassis.setPose(0, 0, 0);
-	/** arm_calibrate();
-	arm_motor.move_relative(360*7*0.4, 127);
-	pros::delay(1000);
-	arm_motor.brake();
-
-	pros::delay(100); */
-	// intake_motors.move(127);
-	// chassis.moveToPose(-2.675, 12, 270, 10000,{.maxSpeed = 127, .minSpeed = 5});
-	// chassis.swingToHeading(270, DriveSide::LEFT, 4000);
-	// chassis.swingToHeading(270, DriveSide::LEFT, 4000);
 	chassis.moveToPoint(0, 20, 5000, {.maxSpeed = 100}); // , .minSpeed = 5, .earlyExitRange = 0.01
 	pros::delay(1000);
-	// chassis.moveToPose(-4.965, 13.162, 270, 10000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
-	// chassis.moveToPose(-25.87, 12.16, 0, 5000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
-	// hassis.moveToPose(-24.514, 20.473, 22.2, 5000, {.maxSpeed = 60, .minSpeed = 5, .earlyExitRange = 0.01});
 
-
-// Path
-
-// Path
-
-
-
-
-
-
-
-
-
-    // chassis.follow(bb1_txt, 40, 10000);
-	// pros::delay(300);
-	// intake_motors.brake();
-    /** chassis.follow(bb1_reverse_txt, 40, 10000);
-	intake_motors.move(127);
-    chassis.follow(bb2_txt, 15, 10000);
-	pros::delay(300);
-	intake_motors.brake();
-    chassis.follow(bb2_reverse_txt, 15, 10000, false);
-	intake_motors.move(127);
-    chassis.follow(bb3_txt, 15, 10000);
-	pros::delay(300);
-	intake_motors.brake();
-    chassis.follow(bb_retrieve_txt, 15, 10000, false);
-	pros::delay(100);
-	arm_moveToAngle(75, 127);
-	pros::delay(100);
-    chassis.follow(bb_score_txt, 15, 10000);
-	pros::delay(100);
-	arm_moveToAngle(0, 127);
-	pros::delay(500);
-	intake_motors.move(-127);
-	pros::delay(2000);
-	intake_motors.brake(); */
 }
 
+// Main code, automatically runs after initialization
 void opcontrol() {
 	while (true) {
 		// start auton
 		if (controller.get_digital(DIGITAL_A)) {
-			
+			// Prompt remote
 			controller.print(0,0, "AUTON STARTED");
 			// delay for text to uplaod
 			pros::delay(110);
@@ -305,10 +233,12 @@ void opcontrol() {
 			pros::delay(110);
 		}
 
+		// Start operator control when B is pressed
 		if (controller.get_digital(DIGITAL_B)) {
 			
 			controller.clear_line(0);
 			pros::delay(110);
+			// Prompt remote
 			controller.print(0,0, "DRIVER CONTROL");
 			pros::delay(110);
 
@@ -320,6 +250,7 @@ void opcontrol() {
 				int leftY = controller.get_analog(ANALOG_LEFT_Y);
 				int rightX = controller.get_analog(ANALOG_RIGHT_X);
 
+				// scaling controls by 0.85
 				leftY *= 0.85;
 				rightX *= 0.85;
 
@@ -327,7 +258,6 @@ void opcontrol() {
 				chassis.curvature(leftY, rightX);
 
 				// move the arm
-			
 				if (controller.get_digital(DIGITAL_L1))
 				{
 					arm_motor.move(100);
@@ -341,8 +271,7 @@ void opcontrol() {
 					arm_motor.brake();
 				}
 
-				// arm_scr(127);
-
+				// move the intake
 				if (controller.get_digital(DIGITAL_R1)) {
 					intake_motors.move(127);
 				}
@@ -354,7 +283,7 @@ void opcontrol() {
 					intake_motors.brake();
 				}
 				
-
+				// arm calibration for arm scroll (unused)
 				if (controller.get_digital(DIGITAL_X)) {
 					arm_calibrate();
 				}
@@ -362,6 +291,7 @@ void opcontrol() {
 				// delay to save resources
 				pros::delay(10);
 
+				// exit driver control
 				if (controller.get_digital(DIGITAL_A)) {
 					break;
 				}
