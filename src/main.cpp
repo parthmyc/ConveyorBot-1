@@ -121,6 +121,8 @@ void arm_moveToAngle(double angle, double maxSpeed) {
 	double error = arm_encoder.get_value() - angle;
 	double power = arm_controller.update(error);
 
+	// We attempted implenting slew rate and speed limits to the unused arm PID controller but we commented them out in a troubleshooting attempt
+
 	// Apply the slew rate limiter to the power
 	// double limitedPower = lemlib::slew(power, currentPower, 5); //set maxAccel as slew rate
 
